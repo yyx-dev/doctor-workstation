@@ -3,7 +3,6 @@ package com.dw.gui;
 import com.dw.dao.AppointmentDao;
 import com.dw.model.Appointment;
 import com.dw.model.Doctor;
-import com.dw.model.Patient;
 import com.dw.util.UIUtil;
 
 import javax.swing.*;

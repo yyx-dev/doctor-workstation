@@ -61,6 +61,34 @@ CREATE TABLE IF NOT EXISTS `medical_record` (
     FOREIGN KEY (`patient_id`) REFERENCES `patient`(`id`) ON DELETE CASCADE
 );
 
+-- 创建入院单表
+CREATE TABLE admission_form (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    patient_name VARCHAR(255) NOT NULL,
+    admission_date DATE NOT NULL,
+    diagnosis TEXT NOT NULL,
+    doctor_name VARCHAR(255) NOT NULL
+);
+
+-- 创建病假单表
+CREATE TABLE sick_leave_form (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    patient_name VARCHAR(255) NOT NULL,
+    start_date DATE NOT NULL,
+    end_date DATE NOT NULL,
+    reason TEXT NOT NULL,
+    doctor_name VARCHAR(255) NOT NULL
+);
+
+-- 创建疾病证明单表
+CREATE TABLE disease_certificate (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    patient_name VARCHAR(255) NOT NULL,
+    diagnosis TEXT NOT NULL,
+    issue_date DATE NOT NULL,
+    doctor_name VARCHAR(255) NOT NULL
+);
+
 -- 插入示范数据 - 用户表
 INSERT INTO `user` (`username`, `password`, `role`) VALUES
     ('doctor1', 'password', 'doctor'),

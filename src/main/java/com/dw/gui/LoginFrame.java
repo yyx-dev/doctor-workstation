@@ -90,6 +90,11 @@ public class LoginFrame extends JFrame {
         JLabel passwordLabel = UIUtil.createLabel("密码：");
         passwordField = UIUtil.createPasswordField();
 
+
+        usernameField.setText("doctor1");
+        passwordField.setText("password");
+
+
         gbc.gridx = 0;
         gbc.gridy = 1;
         gbc.gridwidth = 1;

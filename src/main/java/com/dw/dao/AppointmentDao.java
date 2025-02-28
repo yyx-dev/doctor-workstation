@@ -1,7 +1,6 @@
 package com.dw.dao;
 
 import com.dw.model.Appointment;
-import com.dw.model.Doctor;
 import com.dw.model.Patient;
 import com.dw.util.DBUtil;
 

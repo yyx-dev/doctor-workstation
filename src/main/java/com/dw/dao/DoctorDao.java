@@ -1,7 +1,6 @@
 package com.dw.dao;
 
 import com.dw.model.Doctor;
-import com.dw.model.User;
 import com.dw.util.DBUtil;
 
 import java.sql.*;

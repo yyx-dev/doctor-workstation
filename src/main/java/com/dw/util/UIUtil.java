@@ -4,6 +4,9 @@ import javax.swing.*;
 import javax.swing.border.Border;
 import java.awt.*;
 import java.net.URL;
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
+import java.util.Date;
 
 /**
  * UI工具类，提供UI相关的通用方法
@@ -177,5 +180,20 @@ public class UIUtil {
     public static boolean showConfirm(Component parent, String message, String title) {
         int result = JOptionPane.showConfirmDialog(parent, message, title, JOptionPane.YES_NO_OPTION);
         return result == JOptionPane.YES_OPTION;
+    }
+
+    /**
+     * 解析日期字符串
+     * @param dateString 日期字符串
+     * @return 解析后的日期对象
+     */
+    public static Date parseDate(String dateString) {
+        SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd");
+        try {
+            return dateFormat.parse(dateString);
+        } catch (ParseException e) {
+            showError(null, "无效的日期格式，请使用 yyyy-MM-dd 格式", "错误");
+            return null;
+        }
     }
 }

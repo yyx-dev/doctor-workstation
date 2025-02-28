@@ -2,8 +2,6 @@ package com.dw.gui;
 
 import com.dw.model.Patient;
 import com.dw.util.UIUtil;
-import com.dw.gui.RegistrationPanel;
-import com.dw.gui.ChiefComplaintPanel;
 
 import javax.swing.*;
 import java.awt.*;
