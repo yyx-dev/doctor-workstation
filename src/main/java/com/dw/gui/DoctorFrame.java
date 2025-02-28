@@ -20,6 +20,7 @@ public class DoctorFrame extends JFrame {
     private JButton appointmentButton;
     private JButton diagnosisButton;
     private JButton logoutButton;
+    private JButton admissionFormButton;
 
     // 右侧内容面板
     private JPanel contentPanel;
@@ -29,6 +30,7 @@ public class DoctorFrame extends JFrame {
     private DoctorInfoPanel doctorInfoPanel;
     private AppointmentPanel appointmentPanel;
     private DiagnosisPanel diagnosisPanel;
+    private AdmissionFormPanel admissionFormPanel;
 
     /**
      * 构造函数
@@ -84,13 +86,17 @@ public class DoctorFrame extends JFrame {
         appointmentButton = createMenuButton("挂号处理");
         diagnosisButton = createMenuButton("患者诊断");
         logoutButton = createMenuButton("退出登录");
+        admissionFormButton = createMenuButton("入院单");
 
         menuPanel.add(doctorInfoButton);
         menuPanel.add(Box.createVerticalStrut(10));
         menuPanel.add(appointmentButton);
         menuPanel.add(Box.createVerticalStrut(10));
         menuPanel.add(diagnosisButton);
+        menuPanel.add(Box.createVerticalStrut(10));
+        menuPanel.add(admissionFormButton);
         menuPanel.add(Box.createVerticalGlue()); // 弹性空间
+
         menuPanel.add(logoutButton);
 
         // 创建右侧内容面板
@@ -102,11 +108,13 @@ public class DoctorFrame extends JFrame {
         doctorInfoPanel = new DoctorInfoPanel(doctor);
         appointmentPanel = new AppointmentPanel(doctor);
         diagnosisPanel = new DiagnosisPanel(doctor);
+        admissionFormPanel = new AdmissionFormPanel(doctor);
 
         // 添加子面板到卡片布局
         contentPanel.add(doctorInfoPanel, "doctorInfo");
         contentPanel.add(appointmentPanel, "appointment");
         contentPanel.add(diagnosisPanel, "diagnosis");
+        contentPanel.add(admissionFormPanel, "admissionForm");
 
         // 显示默认面板
         cardLayout.show(contentPanel, "doctorInfo");
@@ -171,6 +179,17 @@ public class DoctorFrame extends JFrame {
                 highlightButton(diagnosisButton);
             }
         });
+
+        // 入院单按钮点击事件
+        admissionFormButton.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                diagnosisPanel.refreshData(); // 刷新数据
+                cardLayout.show(contentPanel, "admissionForm");
+                highlightButton(admissionFormButton);
+            }
+        });
+
 
         // 退出登录按钮点击事件
         logoutButton.addActionListener(new ActionListener() {
