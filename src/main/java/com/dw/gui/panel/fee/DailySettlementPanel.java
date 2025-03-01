@@ -6,12 +6,19 @@ import com.dw.dao.invoice.InvoiceDao;
 import com.dw.dao.fee.RefundRequestDao;
 import com.dw.model.fee.DailySettlement;
 import com.dw.model.user.Doctor;
+import com.dw.util.DBUtil;
 import com.dw.util.UIUtil;
+import net.sf.jasperreports.engine.*;
+import net.sf.jasperreports.view.JasperViewer;
+
 import javax.swing.*;
 import java.awt.*;
 import java.awt.event.ActionEvent;
+import java.sql.SQLException;
 import java.sql.Timestamp;
 import java.math.BigDecimal;
+import java.util.HashMap;
+import java.util.Map;
 
 public class DailySettlementPanel extends JPanel {
     private final Doctor doctor;
@@ -130,6 +137,16 @@ public class DailySettlementPanel extends JPanel {
     }
 
     private void printReport(ActionEvent e) {
-        // 实现打印逻辑
+        try {
+            JasperReport report = JasperCompileManager.compileReport("reports/daily.jrxml");
+            Map<String, Object> params = new HashMap<>();
+            params.put("settlementNo", currentSettlement.getSettlementNo());
+            JasperPrint print = JasperFillManager.fillReport(report, params, DBUtil.getConnection());
+            JasperViewer.viewReport(print, false);
+        } catch (JRException ex) {
+            UIUtil.showError(this, "打印失败：" + ex.getMessage(), "系统错误");
+        } catch (SQLException ex) {
+            UIUtil.showError(this, "打印失败：" + ex.getMessage(), "数据库错误");
+        }
     }
 }
