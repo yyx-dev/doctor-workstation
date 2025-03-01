@@ -1,3 +1,4 @@
+DROP DATABASE IF EXISTS doctor_workstation;
 CREATE DATABASE IF NOT EXISTS doctor_workstation CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci;
 USE doctor_workstation;
 
@@ -40,53 +41,186 @@ CREATE TABLE IF NOT EXISTS `appointment` (
     `patient_id` INT NOT NULL,
     `doctor_id` INT,
     `department` VARCHAR(50) NOT NULL,
-    `status` VARCHAR(20) NOT NULL, -- 'waiting', 'processing', 'completed'
+    `cancel_reason` VARCHAR(200),
+    `status` ENUM('PENDING','COMPLETED','CANCELED'),
     `chief_complaint` TEXT, -- 主诉
     `appointment_time` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (`patient_id`) REFERENCES `patient`(`id`) ON DELETE CASCADE,
     FOREIGN KEY (`doctor_id`) REFERENCES `doctor`(`id`) ON DELETE SET NULL
 );
 
--- 创建病历表
-CREATE TABLE IF NOT EXISTS `medical_record` (
+-- 入院单表
+CREATE TABLE IF NOT EXISTS `admission_form` (
     `id` INT PRIMARY KEY AUTO_INCREMENT,
     `appointment_id` INT NOT NULL,
     `doctor_id` INT NOT NULL,
     `patient_id` INT NOT NULL,
-    `diagnosis` TEXT NOT NULL, -- 诊断结果
-    `prescription` TEXT, -- 药方
+    `department` VARCHAR(50) NOT NULL,
+    `diagnosis` TEXT NOT NULL,
+    `admission_reason` TEXT NOT NULL,
     `create_time` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (`appointment_id`) REFERENCES `appointment`(`id`) ON DELETE CASCADE,
-    FOREIGN KEY (`doctor_id`) REFERENCES `doctor`(`id`) ON DELETE CASCADE,
-    FOREIGN KEY (`patient_id`) REFERENCES `patient`(`id`) ON DELETE CASCADE
+    FOREIGN KEY (`appointment_id`) REFERENCES `appointment`(`id`),
+    FOREIGN KEY (`doctor_id`) REFERENCES `doctor`(`id`),
+    FOREIGN KEY (`patient_id`) REFERENCES `patient`(`id`)
 );
 
--- 创建入院单表
-CREATE TABLE admission_form (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    patient_name VARCHAR(255) NOT NULL,
+-- 病假单表
+CREATE TABLE IF NOT EXISTS `sick_leave_form` (
+    `id` INT PRIMARY KEY AUTO_INCREMENT,
+    `appointment_id` INT NOT NULL,
+    `doctor_id` INT NOT NULL,
+    `patient_id` INT NOT NULL,
+    `days` INT NOT NULL CHECK (days BETWEEN 1 AND 30),
+    `medical_advice` TEXT NOT NULL,
+    `create_time` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (`appointment_id`) REFERENCES `appointment`(`id`),
+    FOREIGN KEY (`doctor_id`) REFERENCES `doctor`(`id`),
+    FOREIGN KEY (`patient_id`) REFERENCES `patient`(`id`)
+);
+
+-- 疾病证明表
+CREATE TABLE IF NOT EXISTS `medical_certificate` (
+     `id` INT PRIMARY KEY AUTO_INCREMENT,
+     `appointment_id` INT NOT NULL,
+     `doctor_id` INT NOT NULL,
+     `patient_id` INT NOT NULL,
+     `diagnosis` TEXT NOT NULL,
+     `treatment_advice` TEXT NOT NULL,
+     `create_time` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+     FOREIGN KEY (`appointment_id`) REFERENCES `appointment`(`id`),
+     FOREIGN KEY (`doctor_id`) REFERENCES `doctor`(`id`),
+     FOREIGN KEY (`patient_id`) REFERENCES `patient`(`id`)
+);
+
+-- 排班计划表
+CREATE TABLE schedule_plan (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    doctor_id INT NOT NULL,
+    department VARCHAR(50) NOT NULL,
+    schedule_date DATE NOT NULL,
+    shift_type ENUM('早班', '中班', '晚班') NOT NULL,
+    start_time TIME NOT NULL,
+    end_time TIME NOT NULL,
+    max_patients INT DEFAULT 30,
+    FOREIGN KEY (doctor_id) REFERENCES doctor(id)
+);
+
+-- 号源表
+CREATE TABLE registration_number (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    schedule_id INT NOT NULL,
+    number_time DATETIME NOT NULL,
+    status ENUM('未使用', '已预约', '已使用') DEFAULT '未使用',
+    patient_id INT,
+    FOREIGN KEY (schedule_id) REFERENCES schedule_plan(id),
+    FOREIGN KEY (patient_id) REFERENCES patient(id)
+);
+
+-- 排班资源表
+CREATE TABLE schedule_resource (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    resource_name VARCHAR(100) NOT NULL,
+    resource_type ENUM('诊室', '设备') NOT NULL,
+    schedule_id INT,
+    status ENUM('可用', '维护中', '已占用') DEFAULT '可用',
+    FOREIGN KEY (schedule_id) REFERENCES schedule_plan(id)
+);
+
+-- 病案主表
+CREATE TABLE medical_record (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    appointment_id INT NOT NULL,
+    patient_id INT NOT NULL,
+    doctor_id INT NOT NULL,
     admission_date DATE NOT NULL,
+    discharge_date DATE,
+    current_status VARCHAR(50) COMMENT '当前病情状态',
     diagnosis TEXT NOT NULL,
-    doctor_name VARCHAR(255) NOT NULL
+    prescription TEXT NOT NULL,
+    status ENUM('新建', '审核中', '已归档') DEFAULT '新建',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (patient_id) REFERENCES patient(id),
+    FOREIGN KEY (doctor_id) REFERENCES doctor(id)
 );
 
--- 创建病假单表
-CREATE TABLE sick_leave_form (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    patient_name VARCHAR(255) NOT NULL,
-    start_date DATE NOT NULL,
-    end_date DATE NOT NULL,
-    reason TEXT NOT NULL,
-    doctor_name VARCHAR(255) NOT NULL
+-- 创建病历段落表
+CREATE TABLE emr_sections (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    record_id INT NOT NULL,
+    section_type ENUM('CHIEF_COMPLAINT', 'HISTORY_PRESENT', 'PHYSICAL_EXAM', 'DIAGNOSIS') NOT NULL,
+    content TEXT NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (record_id) REFERENCES medical_record(id)
 );
 
--- 创建疾病证明单表
-CREATE TABLE disease_certificate (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    patient_name VARCHAR(255) NOT NULL,
-    diagnosis TEXT NOT NULL,
+-- 病案明细表
+CREATE TABLE medical_record_detail (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    record_id INT NOT NULL,
+    section_type ENUM('主诉', '现病史', '既往史', '查体', '辅助检查', '诊断', '治疗'),
+    content TEXT NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (record_id) REFERENCES medical_record(id)
+);
+
+-- 接诊队列表（依赖已有的appointment表）
+CREATE TABLE consultation_queue (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    appointment_id INT NOT NULL UNIQUE,
+    queue_number INT NOT NULL,
+    status ENUM('等待中', '接诊中', '已完成') DEFAULT '等待中',
+    start_time DATETIME,
+    end_time DATETIME,
+    FOREIGN KEY (appointment_id) REFERENCES appointment(id)
+);
+
+-- 诊断书表
+CREATE TABLE diagnosis_certificate (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    record_id INT NOT NULL,
+    doctor_id INT NOT NULL,
+    diagnosis_details TEXT NOT NULL,
+    treatment_plan TEXT NOT NULL,
+    medication TEXT,
+    follow_up TEXT,
     issue_date DATE NOT NULL,
-    doctor_name VARCHAR(255) NOT NULL
+    signature VARCHAR(100),
+    FOREIGN KEY (record_id) REFERENCES medical_record(id),
+    FOREIGN KEY (doctor_id) REFERENCES doctor(id)
+);
+
+-- 诊断书模板表
+CREATE TABLE diagnosis_template (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    template_name VARCHAR(50) NOT NULL,
+    department VARCHAR(50) NOT NULL,
+    content TEXT NOT NULL
+);
+
+-- 号源生成表
+CREATE TABLE number_source (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    doctor_id INT NOT NULL,
+    date DATE NOT NULL,
+    time_slot VARCHAR(5) NOT NULL COMMENT '时间段，格式如 09:00',
+    status ENUM('available', 'reserved', 'completed') DEFAULT 'available',
+    patient_id INT COMMENT '预约患者ID',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (doctor_id) REFERENCES doctor(id)
+);
+
+CREATE TABLE diagnosis_document (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    record_id INT NOT NULL COMMENT '关联病历ID',
+    patient_id INT NOT NULL,
+    doctor_id INT NOT NULL,
+    diagnosis TEXT NOT NULL COMMENT '诊断结论',
+    treatment TEXT COMMENT '治疗方案',
+    medication TEXT COMMENT '处方药物',
+    issue_date DATETIME NOT NULL,
+    FOREIGN KEY (record_id) REFERENCES medical_record(id),
+    FOREIGN KEY (patient_id) REFERENCES patient(id),
+    FOREIGN KEY (doctor_id) REFERENCES doctor(id)
 );
 
 -- 插入示范数据 - 用户表
@@ -112,10 +246,18 @@ INSERT INTO `patient` (`user_id`, `name`, `gender`, `age`, `phone`, `address`) V
 
 -- 插入示范数据 - 挂号表
 INSERT INTO `appointment` (`patient_id`, `doctor_id`, `department`, `status`, `chief_complaint`) VALUES
-    (1, 1, '内科', 'waiting', '头痛、发热两天'),
-    (2, 2, '外科', 'processing', '右腿受伤一周'),
-    (3, 3, '儿科', 'waiting', '咳嗽、流涕三天');
+    (1, 1, '内科', 'PENDING', '头痛、发热两天'),
+    (2, 2, '外科', 'CANCELED', '右腿受伤一周'),
+    (3, 3, '儿科', 'COMPLETED', '咳嗽、流涕三天');
 
--- 插入示范数据 - 病历表
-INSERT INTO `medical_record` (`appointment_id`, `doctor_id`, `patient_id`, `diagnosis`, `prescription`) VALUES
-    (2, 2, 2, '右腿软组织挫伤', '活血化瘀膏 - 每日外敷两次');
+-- 入院单测试数据
+INSERT INTO admission_form (appointment_id, doctor_id, patient_id, department, diagnosis, admission_reason)
+    VALUES (1, 1, 1, '内科', '急性肺炎', '需住院观察治疗');
+
+-- 病假单测试数据
+INSERT INTO sick_leave_form (appointment_id, doctor_id, patient_id, days, medical_advice)
+    VALUES (2, 2, 2, 5, '建议卧床休息，避免剧烈运动');
+
+-- 疾病证明测试数据
+INSERT INTO medical_certificate (appointment_id, doctor_id, patient_id, diagnosis, treatment_advice)
+    VALUES (3, 3, 3, '慢性支气管炎', '定期复查，避免接触过敏源');

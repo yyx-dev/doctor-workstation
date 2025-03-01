@@ -1,289 +1,188 @@
 package com.dw.dao;
 
 import com.dw.model.MedicalRecord;
-import com.dw.model.Doctor;
 import com.dw.util.DBUtil;
-
 import java.sql.*;
 import java.util.ArrayList;
 import java.util.List;
 
-/**
- * 病历数据访问层
- */
 public class MedicalRecordDao {
+    // 创建病历
+    public int add(MedicalRecord record) throws SQLException {
+        String sql = "INSERT INTO medical_record (appointment_id, patient_id, doctor_id, "
+                + "admission_date, discharge_date, diagnosis, status, prescription) "
+                + "VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
 
-    /**
-     * 添加病历记录
-     * @param medicalRecord 病历对象
-     * @return 新增病历记录的ID，失败返回-1
-     */
-    public int add(MedicalRecord medicalRecord) {
-        Connection conn = null;
-        PreparedStatement stmt = null;
-        ResultSet rs = null;
-        int medicalRecordId = -1;
+        try (Connection conn = DBUtil.getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
 
-        try {
-            conn = DBUtil.getConnection();
-            String sql = "INSERT INTO medical_record(appointment_id, doctor_id, patient_id, diagnosis, prescription) VALUES(?, ?, ?, ?, ?)";
-            stmt = conn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS);
-            stmt.setInt(1, medicalRecord.getAppointmentId());
-            stmt.setInt(2, medicalRecord.getDoctorId());
-            stmt.setInt(3, medicalRecord.getPatientId());
-            stmt.setString(4, medicalRecord.getDiagnosis());
-            stmt.setString(5, medicalRecord.getPrescription());
+            pstmt.setInt(1, record.getAppointmentId());
+            pstmt.setInt(2, record.getPatientId());
+            pstmt.setInt(3, record.getDoctorId());
+            pstmt.setDate(4, record.getAdmissionDate());
+            pstmt.setDate(5, record.getDischargeDate());
+            pstmt.setString(6, record.getDiagnosis());
+            pstmt.setString(7, record.getStatus());
+            pstmt.setString(8, record.getPrescription());
 
-            int affectedRows = stmt.executeUpdate();
-            if (affectedRows > 0) {
-                rs = stmt.getGeneratedKeys();
+            pstmt.executeUpdate();
+            try (ResultSet rs = pstmt.getGeneratedKeys()) {
+                return rs.next() ? rs.getInt(1) : -1;
+            }
+        }
+    }
+
+    // 根据ID获取病历
+    public MedicalRecord findById(int id) throws SQLException {
+        String sql = "SELECT * FROM medical_record WHERE id = ?";
+        try (Connection conn = DBUtil.getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+
+            pstmt.setInt(1, id);
+            try (ResultSet rs = pstmt.executeQuery()) {
                 if (rs.next()) {
-                    medicalRecordId = rs.getInt(1);
+                    return mapResultSetToMedicalRecord(rs);
+                }
+                return null;
+            }
+        }
+    }
+
+    // 更新病历
+    public boolean update(MedicalRecord record) throws SQLException {
+        String sql = "UPDATE medical_record SET "
+                + "discharge_date = ?, diagnosis = ?, status = ?, prescription = ? "
+                + "WHERE id = ?";
+
+        try (Connection conn = DBUtil.getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+
+            pstmt.setDate(1, record.getDischargeDate());
+            pstmt.setString(2, record.getDiagnosis());
+            pstmt.setString(3, record.getStatus());
+            pstmt.setString(4, record.getPrescription());
+            pstmt.setInt(5, record.getId());
+
+            return pstmt.executeUpdate() > 0;
+        }
+    }
+
+    // 根据患者ID查询病历
+    public List<MedicalRecord> findByPatientId(int patientId) throws SQLException {
+        String sql = "SELECT * FROM medical_record WHERE patient_id = ? ORDER BY admission_date DESC";
+        return executeQueryWithParam(sql, patientId);
+    }
+
+    // 根据医生ID查询病历
+    public List<MedicalRecord> findByDoctorId(int doctorId) throws SQLException {
+        String sql = "SELECT * FROM medical_record WHERE doctor_id = ? ORDER BY admission_date DESC";
+        return executeQueryWithParam(sql, doctorId);
+    }
+
+    // 公共查询方法
+    private List<MedicalRecord> executeQueryWithParam(String sql, int param) throws SQLException {
+        List<MedicalRecord> records = new ArrayList<>();
+        try (Connection conn = DBUtil.getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+
+            pstmt.setInt(1, param);
+            try (ResultSet rs = pstmt.executeQuery()) {
+                while (rs.next()) {
+                    records.add(mapResultSetToMedicalRecord(rs));
                 }
             }
-        } catch (SQLException e) {
-            e.printStackTrace();
-        } finally {
-            DBUtil.close(conn, stmt, rs);
         }
-
-        return medicalRecordId;
+        return records;
     }
 
-    /**
-     * 根据ID查找病历记录
-     * @param id 病历记录ID
-     * @return 病历对象，如果不存在返回null
-     */
-    public MedicalRecord findById(int id) {
-        Connection conn = null;
-        PreparedStatement stmt = null;
-        ResultSet rs = null;
-        MedicalRecord medicalRecord = null;
-
-        try {
-            conn = DBUtil.getConnection();
-            String sql = "SELECT * FROM medical_record WHERE id = ?";
-            stmt = conn.prepareStatement(sql);
-            stmt.setInt(1, id);
-
-            rs = stmt.executeQuery();
-            if (rs.next()) {
-                medicalRecord = new MedicalRecord();
-                medicalRecord.setId(rs.getInt("id"));
-                medicalRecord.setAppointmentId(rs.getInt("appointment_id"));
-                medicalRecord.setDoctorId(rs.getInt("doctor_id"));
-                medicalRecord.setPatientId(rs.getInt("patient_id"));
-                medicalRecord.setDiagnosis(rs.getString("diagnosis"));
-                medicalRecord.setPrescription(rs.getString("prescription"));
-                medicalRecord.setCreateTime(rs.getTimestamp("create_time"));
-            }
-        } catch (SQLException e) {
-            e.printStackTrace();
-        } finally {
-            DBUtil.close(conn, stmt, rs);
-        }
-
-        return medicalRecord;
+    // 结果集映射
+    private MedicalRecord mapResultSetToMedicalRecord(ResultSet rs) throws SQLException {
+        MedicalRecord record = new MedicalRecord();
+        record.setId(rs.getInt("id"));
+        record.setAppointmentId(rs.getInt("appointment_id"));
+        record.setPatientId(rs.getInt("patient_id"));
+        record.setDoctorId(rs.getInt("doctor_id"));
+        record.setAdmissionDate(rs.getDate("admission_date"));
+        record.setDischargeDate(rs.getDate("discharge_date"));
+        record.setDiagnosis(rs.getString("diagnosis"));
+        record.setStatus(rs.getString("status"));
+        record.setPrescription(rs.getString("prescription"));
+        record.setCreatedAt(rs.getTimestamp("created_at"));
+        return record;
     }
 
-    /**
-     * 根据挂号ID查找病历记录
-     * @param appointmentId 挂号记录ID
-     * @return 病历对象，如果不存在返回null
-     */
-    public MedicalRecord findByAppointmentId(int appointmentId) {
-        Connection conn = null;
-        PreparedStatement stmt = null;
-        ResultSet rs = null;
-        MedicalRecord medicalRecord = null;
+    public List<MedicalRecord> getSortedRecords(String sortType) throws SQLException {
+        String sql = "SELECT m.*, p.name as patient_name " +
+                "FROM medical_record m " +
+                "JOIN patient p ON m.patient_id = p.id " +
+                getOrderClause(sortType);
 
-        try {
-            conn = DBUtil.getConnection();
-            String sql = "SELECT * FROM medical_record WHERE appointment_id = ?";
-            stmt = conn.prepareStatement(sql);
-            stmt.setInt(1, appointmentId);
+        List<MedicalRecord> records = new ArrayList<>();
+        try (Connection conn = DBUtil.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
 
-            rs = stmt.executeQuery();
-            if (rs.next()) {
-                medicalRecord = new MedicalRecord();
-                medicalRecord.setId(rs.getInt("id"));
-                medicalRecord.setAppointmentId(rs.getInt("appointment_id"));
-                medicalRecord.setDoctorId(rs.getInt("doctor_id"));
-                medicalRecord.setPatientId(rs.getInt("patient_id"));
-                medicalRecord.setDiagnosis(rs.getString("diagnosis"));
-                medicalRecord.setPrescription(rs.getString("prescription"));
-                medicalRecord.setCreateTime(rs.getTimestamp("create_time"));
-            }
-        } catch (SQLException e) {
-            e.printStackTrace();
-        } finally {
-            DBUtil.close(conn, stmt, rs);
-        }
-
-        return medicalRecord;
-    }
-
-    /**
-     * 根据患者ID查找病历记录
-     * @param patientId 患者ID
-     * @return 病历记录列表
-     */
-    public List<MedicalRecord> findByPatientId(int patientId) {
-        Connection conn = null;
-        PreparedStatement stmt = null;
-        ResultSet rs = null;
-        List<MedicalRecord> medicalRecords = new ArrayList<>();
-
-        try {
-            conn = DBUtil.getConnection();
-            String sql = "SELECT * FROM medical_record WHERE patient_id = ? ORDER BY create_time DESC";
-            stmt = conn.prepareStatement(sql);
-            stmt.setInt(1, patientId);
-
-            rs = stmt.executeQuery();
+            ResultSet rs = stmt.executeQuery();
             while (rs.next()) {
-                MedicalRecord medicalRecord = new MedicalRecord();
-                medicalRecord.setId(rs.getInt("id"));
-                medicalRecord.setAppointmentId(rs.getInt("appointment_id"));
-                medicalRecord.setDoctorId(rs.getInt("doctor_id"));
-                medicalRecord.setPatientId(rs.getInt("patient_id"));
-                medicalRecord.setDiagnosis(rs.getString("diagnosis"));
-                medicalRecord.setPrescription(rs.getString("prescription"));
-                medicalRecord.setCreateTime(rs.getTimestamp("create_time"));
-                medicalRecords.add(medicalRecord);
+                MedicalRecord record = new MedicalRecord();
+                record.setId(rs.getInt("id"));
+                record.setPatientId(rs.getInt("patient_id"));
+                record.setAdmissionDate(rs.getDate("admission_date"));
+                record.setDiagnosis(rs.getString("diagnosis"));
+                records.add(record);
             }
-        } catch (SQLException e) {
-            e.printStackTrace();
-        } finally {
-            DBUtil.close(conn, stmt, rs);
         }
-
-        return medicalRecords;
+        return records;
     }
 
-    /**
-     * 根据医生ID查找病历记录
-     * @param doctorId 医生ID
-     * @return 病历记录列表
-     */
-    public List<MedicalRecord> findByDoctorId(int doctorId) {
-        Connection conn = null;
-        PreparedStatement stmt = null;
-        ResultSet rs = null;
-        List<MedicalRecord> medicalRecords = new ArrayList<>();
-
-        try {
-            conn = DBUtil.getConnection();
-            String sql = "SELECT * FROM medical_record WHERE doctor_id = ? ORDER BY create_time DESC";
-            stmt = conn.prepareStatement(sql);
-            stmt.setInt(1, doctorId);
-
-            rs = stmt.executeQuery();
-            while (rs.next()) {
-                MedicalRecord medicalRecord = new MedicalRecord();
-                medicalRecord.setId(rs.getInt("id"));
-                medicalRecord.setAppointmentId(rs.getInt("appointment_id"));
-                medicalRecord.setDoctorId(rs.getInt("doctor_id"));
-                medicalRecord.setPatientId(rs.getInt("patient_id"));
-                medicalRecord.setDiagnosis(rs.getString("diagnosis"));
-                medicalRecord.setPrescription(rs.getString("prescription"));
-                medicalRecord.setCreateTime(rs.getTimestamp("create_time"));
-                medicalRecords.add(medicalRecord);
-            }
-        } catch (SQLException e) {
-            e.printStackTrace();
-        } finally {
-            DBUtil.close(conn, stmt, rs);
-        }
-
-        return medicalRecords;
+    private String getOrderClause(String sortType) {
+        return switch (sortType) {
+            case "按患者姓名" -> " ORDER BY p.name";
+            case "按科室" -> " ORDER BY m.department";
+            default -> " ORDER BY m.admission_date";
+        };
     }
 
-    /**
-     * 获取所有病历记录
-     * @return 病历记录列表
-     */
-    public List<MedicalRecord> findAll() {
-        Connection conn = null;
-        PreparedStatement stmt = null;
-        ResultSet rs = null;
-        List<MedicalRecord> medicalRecords = new ArrayList<>();
-
-        try {
-            conn = DBUtil.getConnection();
-            String sql = "SELECT * FROM medical_record ORDER BY create_time DESC";
-            stmt = conn.prepareStatement(sql);
-
-            rs = stmt.executeQuery();
-            while (rs.next()) {
-                MedicalRecord medicalRecord = new MedicalRecord();
-                medicalRecord.setId(rs.getInt("id"));
-                medicalRecord.setAppointmentId(rs.getInt("appointment_id"));
-                medicalRecord.setDoctorId(rs.getInt("doctor_id"));
-                medicalRecord.setPatientId(rs.getInt("patient_id"));
-                medicalRecord.setDiagnosis(rs.getString("diagnosis"));
-                medicalRecord.setPrescription(rs.getString("prescription"));
-                medicalRecord.setCreateTime(rs.getTimestamp("create_time"));
-                medicalRecords.add(medicalRecord);
-            }
-        } catch (SQLException e) {
-            e.printStackTrace();
-        } finally {
-            DBUtil.close(conn, stmt, rs);
+    private String getSortColumn(String sortType) {
+        switch (sortType) {
+            case "按患者姓名": return "patient_name";
+            case "按科室": return "department";
+            default: return "admission_date";
         }
-
-        return medicalRecords;
     }
 
-    /**
-     * 获取患者详细信息的病历记录列表
-     * @param patientId 患者ID
-     * @return 包含详细信息的病历记录列表
-     */
-    public List<MedicalRecord> findDetailByPatientId(int patientId) {
-        Connection conn = null;
-        PreparedStatement stmt = null;
-        ResultSet rs = null;
-        List<MedicalRecord> medicalRecords = new ArrayList<>();
+    public List<MedicalRecord> getAllActiveRecords() throws SQLException {
+        String sql = "SELECT m.id, m.patient_id, p.name AS patient_name, "
+                + "m.admission_date, m.diagnosis, m.status "
+                + "FROM medical_record m "
+                + "JOIN patient p ON m.patient_id = p.id "
+                + "WHERE m.status = 'ACTIVE' "
+                + "ORDER BY m.admission_date DESC";
 
-        try {
-            conn = DBUtil.getConnection();
-            String sql = "SELECT mr.*, d.name as doctor_name, d.department, a.chief_complaint " +
-                    "FROM medical_record mr " +
-                    "JOIN doctor d ON mr.doctor_id = d.id " +
-                    "JOIN appointment a ON mr.appointment_id = a.id " +
-                    "WHERE mr.patient_id = ? " +
-                    "ORDER BY mr.create_time DESC";
-            stmt = conn.prepareStatement(sql);
-            stmt.setInt(1, patientId);
+        List<MedicalRecord> records = new ArrayList<>();
 
-            rs = stmt.executeQuery();
+        try (Connection conn = DBUtil.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql);
+             ResultSet rs = stmt.executeQuery()) {
+
             while (rs.next()) {
-                MedicalRecord medicalRecord = new MedicalRecord();
-                medicalRecord.setId(rs.getInt("id"));
-                medicalRecord.setAppointmentId(rs.getInt("appointment_id"));
-                medicalRecord.setDoctorId(rs.getInt("doctor_id"));
-                medicalRecord.setPatientId(rs.getInt("patient_id"));
-                medicalRecord.setDiagnosis(rs.getString("diagnosis"));
-                medicalRecord.setPrescription(rs.getString("prescription"));
-                medicalRecord.setCreateTime(rs.getTimestamp("create_time"));
-
-                // 设置医生信息
-                Doctor doctor = new Doctor();
-                doctor.setId(rs.getInt("doctor_id"));
-                doctor.setName(rs.getString("doctor_name"));
-                doctor.setDepartment(rs.getString("department"));
-                medicalRecord.setDoctor(doctor);
-
-                medicalRecords.add(medicalRecord);
+                MedicalRecord record = new MedicalRecord();
+                record.setId(rs.getInt("id"));
+                record.setPatientId(rs.getInt("patient_id"));
+                record.setAdmissionDate(rs.getDate("admission_date"));
+                record.setDiagnosis(rs.getString("diagnosis"));
+                record.setStatus(rs.getString("status"));
+                records.add(record);
             }
-        } catch (SQLException e) {
-            e.printStackTrace();
-        } finally {
-            DBUtil.close(conn, stmt, rs);
         }
+        return records;
+    }
 
-        return medicalRecords;
+    public void withdrawRecord(int recordId) throws SQLException {
+        String sql = "UPDATE medical_record SET status = 'WITHDRAWN' WHERE id = ?";
+        try (Connection conn = DBUtil.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setInt(1, recordId);
+            stmt.executeUpdate();
+        }
     }
 }

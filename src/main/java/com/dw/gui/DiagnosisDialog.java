@@ -13,6 +13,7 @@ import javax.swing.*;
 import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.sql.SQLException;
 import java.text.SimpleDateFormat;
 
 /**
@@ -264,8 +265,14 @@ public class DiagnosisDialog extends JDialog {
         medicalRecord.setDiagnosis(diagnosis);
         medicalRecord.setPrescription(prescription);
 
-        // 保存病历信息
-        medicalRecordDao.add(medicalRecord);
+        try {
+            // 保存病历信息
+            medicalRecordDao.add(medicalRecord);
+            UIUtil.showInfo(this, "病历保存成功", "操作成功");
+        } catch (SQLException ex) {
+            UIUtil.showError(this, "保存病历失败：" + ex.getMessage(), "数据库错误");
+            ex.printStackTrace();
+        }
 
         // 更新挂号状态
         appointment.setStatus("completed");

@@ -6,6 +6,7 @@ import com.dw.dao.UserDao;
 import com.dw.model.Doctor;
 import com.dw.model.Patient;
 import com.dw.model.User;
+import com.dw.service.LoginService;
 import com.dw.util.UIUtil;
 
 import javax.swing.*;
@@ -192,6 +193,7 @@ public class LoginFrame extends JFrame {
         if ("doctor".equals(role)) {
             Doctor doctor = doctorDao.findByUserId(user.getId());
             if (doctor != null) {
+                LoginService.login(doctor);
                 // 打开医生界面
                 new DoctorFrame(doctor);
                 dispose(); // 关闭登录窗口

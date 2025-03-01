@@ -482,4 +482,43 @@ public class AppointmentDao {
         }
         return departments;
     }
+
+    public List<Appointment> getCancelableAppointments() throws SQLException {
+        String sql = "SELECT a.*, p.name as patient_name " +
+                "FROM appointment a " +
+                "JOIN patient p ON a.patient_id = p.id " +
+                "WHERE a.status IN ('PENDING', 'CONFIRMED') " +
+                "ORDER BY a.appointment_time DESC";
+
+        List<Appointment> appointments = new ArrayList<>();
+        try (Connection conn = DBUtil.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql);
+             ResultSet rs = stmt.executeQuery()) {
+
+            while (rs.next()) {
+                Appointment app = new Appointment();
+                app.setId(rs.getInt("id"));
+                app.setPatientId(rs.getInt("patient_id"));
+                app.setAppointmentTime(rs.getTimestamp("appointment_time"));
+                app.setStatus(rs.getString("status"));
+                appointments.add(app);
+            }
+        }
+        return appointments;
+    }
+
+    public void cancelAppointment(int appId, String reason) throws SQLException {
+        String sql = "UPDATE appointment SET status = 'CANCELED', cancel_reason = ?, cancel_time = NOW() WHERE id = ?";
+        try (Connection conn = DBUtil.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+
+            stmt.setString(1, reason);
+            stmt.setInt(2, appId);
+            int affected = stmt.executeUpdate();
+
+            if (affected == 0) {
+                throw new SQLException("未找到可退号的预约记录");
+            }
+        }
+    }
 }

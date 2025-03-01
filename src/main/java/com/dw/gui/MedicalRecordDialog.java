@@ -1,5 +1,6 @@
 package com.dw.gui;
 
+import com.dw.dao.DoctorDao;
 import com.dw.model.Doctor;
 import com.dw.model.MedicalRecord;
 import com.dw.util.UIUtil;
@@ -185,11 +186,11 @@ public class MedicalRecordDialog extends JDialog {
         // 填充表格数据
         for (int i = 0; i < records.size(); i++) {
             MedicalRecord record = records.get(i);
-            Doctor doctor = record.getDoctor();
+            Doctor doctor = new DoctorDao().findById(record.getDoctorId());
 
             Object[] rowData = {
                     i + 1,
-                    dateFormat.format(record.getCreateTime()),
+                    dateFormat.format(record.getCreatedAt()),
                     doctor != null ? doctor.getDepartment() : "",
                     doctor != null ? doctor.getName() : ""
             };

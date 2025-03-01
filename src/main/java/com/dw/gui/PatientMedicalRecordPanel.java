@@ -2,8 +2,11 @@ package com.dw.gui;
 
 import javax.swing.*;
 import java.awt.*;
+
 import com.dw.dao.MedicalRecordDao;
 import com.dw.model.MedicalRecord;
+
+import java.sql.SQLException;
 import java.util.List;
 import javax.swing.table.DefaultTableModel;
 
@@ -35,13 +38,24 @@ public class PatientMedicalRecordPanel extends JPanel {
         tableModel.setRowCount(0);
 
         // 从数据库加载病历信息
-        List<MedicalRecord> records = medicalRecordDao.findByPatientId(patientId);
+
+        List<MedicalRecord> records = null;
+        try {
+            records = medicalRecordDao.findByPatientId(patientId);
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+
+        if (records == null) {
+            return;
+        }
+
         for (MedicalRecord record : records) {
             Object[] rowData = {
-                record.getId(),
-                record.getDiagnosis(),
-                record.getPrescription(),
-                record.getCreateTime()
+                    record.getId(),
+                    record.getDiagnosis(),
+                    record.getPrescription(),
+                    record.getCreatedAt()
             };
             tableModel.addRow(rowData);
         }

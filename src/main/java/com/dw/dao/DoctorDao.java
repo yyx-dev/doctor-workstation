@@ -257,4 +257,23 @@ public class DoctorDao {
 
         return success;
     }
+
+    public Doctor findByUsername(String username) throws SQLException {
+        String sql = "SELECT * FROM doctor WHERE user_id = (SELECT id FROM user WHERE username = ?)";
+        try (Connection conn = DBUtil.getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            pstmt.setString(1, username);
+            try (ResultSet rs = pstmt.executeQuery()) {
+                if (rs.next()) {
+                    Doctor doctor = new Doctor();
+                    doctor.setId(rs.getInt("id"));
+                    doctor.setName(rs.getString("name"));
+                    doctor.setDepartment(rs.getString("department"));
+                    // 设置其他字段...
+                    return doctor;
+                }
+                return null;
+            }
+        }
+    }
 }

@@ -2,10 +2,8 @@ package com.dw.gui;
 
 import com.dw.dao.AppointmentDao;
 import com.dw.dao.MedicalRecordDao;
-import com.dw.model.Appointment;
-import com.dw.model.Doctor;
-import com.dw.model.MedicalRecord;
-import com.dw.model.Patient;
+import com.dw.dao.MedicalRecordDetailDao;
+import com.dw.model.*;
 import com.dw.util.UIUtil;
 
 import javax.swing.*;
@@ -15,7 +13,9 @@ import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
+import java.sql.SQLException;
 import java.text.SimpleDateFormat;
+import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -40,9 +40,11 @@ public class DiagnosisPanel extends JPanel {
     // 数据访问对象
     private AppointmentDao appointmentDao = new AppointmentDao();
     private MedicalRecordDao medicalRecordDao = new MedicalRecordDao();
+    private MedicalRecordDetailDao medicalRecordDetailDao = new MedicalRecordDetailDao();
 
     /**
      * 构造函数
+     *
      * @param doctor 医生对象
      */
     public DiagnosisPanel(Doctor doctor) {
@@ -179,6 +181,7 @@ public class DiagnosisPanel extends JPanel {
 
     /**
      * 打开诊断对话框
+     *
      * @param appointmentId 挂号ID
      */
     private void openDiagnosisDialog(int appointmentId) {
@@ -230,16 +233,34 @@ public class DiagnosisPanel extends JPanel {
             return;
         }
 
-        // 查询患者所有病历
-        List<MedicalRecord> records = medicalRecordDao.findDetailByPatientId(appointment.getPatientId());
+        List<MedicalRecordDetail> records = null;
+        try {
+            // 查询患者所有病历
+            records = medicalRecordDetailDao.findDetailByPatientId(appointment.getPatientId());
+        } catch (SQLException ex) {
+            ex.printStackTrace();
+        }
 
-        if (records.isEmpty()) {
+        if (records != null && records.isEmpty()) {
+            UIUtil.showInfo(this, "该患者暂无病历记录！", "提示");
+            return;
+        }
+
+        // 使用MedicalRecordDao获取主记录
+        List<MedicalRecord> medicalRecords = new ArrayList<>();
+        try {
+            medicalRecords = medicalRecordDao.findByPatientId(appointment.getPatientId());
+        } catch (SQLException ex) {
+            ex.printStackTrace();
+        }
+
+        if (medicalRecords.isEmpty()) {
             UIUtil.showInfo(this, "该患者暂无病历记录！", "提示");
             return;
         }
 
         // 打开病历查看对话框
-        MedicalRecordDialog dialog = new MedicalRecordDialog(SwingUtilities.getWindowAncestor(this), records);
+        MedicalRecordDialog dialog = new MedicalRecordDialog(SwingUtilities.getWindowAncestor(this), medicalRecords);
         dialog.setVisible(true);
     }
 
