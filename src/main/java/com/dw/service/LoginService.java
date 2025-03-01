@@ -1,6 +1,6 @@
 package com.dw.service;
 
-import com.dw.model.Doctor;
+import com.dw.model.user.Doctor;
 
 public class LoginService {
     private static Doctor currentDoctor;

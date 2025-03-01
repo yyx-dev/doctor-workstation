@@ -1,12 +1,11 @@
 package com.dw.util;
 
+import com.dw.model.user.User;
+
 import javax.swing.*;
 import javax.swing.border.Border;
 import java.awt.*;
 import java.net.URL;
-import java.text.ParseException;
-import java.text.SimpleDateFormat;
-import java.util.Date;
 
 /**
  * UI工具类，提供UI相关的通用方法
