@@ -4,6 +4,7 @@ package com.dw.dao.fee;
 import com.dw.model.fee.DailySettlement;
 import com.dw.util.DBUtil;
 import java.sql.*;
+import java.time.LocalDateTime;
 
 public class DailySettlementDao {
     public boolean createSettlement(DailySettlement settlement) throws SQLException {
@@ -15,7 +16,7 @@ public class DailySettlementDao {
              PreparedStatement pstmt = conn.prepareStatement(sql)) {
 
             pstmt.setString(1, settlement.getSettlementNo());
-            pstmt.setTimestamp(2, settlement.getSettleDate());
+            pstmt.setTimestamp(2, Timestamp.valueOf(settlement.getSettleDate()));
             pstmt.setBigDecimal(3, settlement.getTotalAmount());
             pstmt.setBigDecimal(4, settlement.getCashAmount());
             pstmt.setBigDecimal(5, settlement.getRefundAmount());
@@ -27,26 +28,32 @@ public class DailySettlementDao {
         }
     }
 
+    // 在DailySettlementDao的getLastSettlement方法中
     public DailySettlement getLastSettlement() throws SQLException {
         String sql = "SELECT * FROM daily_settlement ORDER BY settle_date DESC LIMIT 1";
         try (Connection conn = DBUtil.getConnection();
-             Statement stmt = conn.createStatement();
-             ResultSet rs = stmt.executeQuery(sql)) {
+            PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            ResultSet rs = pstmt.executeQuery();
 
             if (rs.next()) {
                 DailySettlement ds = new DailySettlement();
-                ds.setId(rs.getInt("id"));
                 ds.setSettlementNo(rs.getString("settlement_no"));
-                ds.setSettleDate(rs.getTimestamp("settle_date"));
-                ds.setTotalAmount(rs.getBigDecimal("total_amount"));
-                ds.setCashAmount(rs.getBigDecimal("cash_amount"));
-                ds.setRefundAmount(rs.getBigDecimal("refund_amount"));
-                ds.setInvoiceCount(rs.getInt("invoice_count"));
-                ds.setOperatorId(rs.getInt("operator_id"));
-                ds.setRemark(rs.getString("remark"));
+
+                Timestamp timestamp = rs.getTimestamp("settle_date");
+                if (timestamp != null) {
+                    ds.setSettleDate(timestamp.toLocalDateTime());
+                } else {
+                    // 处理无日期的情况
+                    ds.setSettleDate(LocalDateTime.MIN);
+                    // 或抛出明确异常：throw new SQLException("settle_date字段为空");
+                }
                 return ds;
             }
+            return null; // 明确返回null表示无记录
+        } catch (SQLException e) {
+            // 记录具体错误
+            System.err.println("获取日结记录失败: " + e.getMessage());
+            throw e; // 抛出异常让上层处理
         }
-        return null;
     }
 }

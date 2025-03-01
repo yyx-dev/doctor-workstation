@@ -286,7 +286,6 @@ public class DoctorFrame extends JFrame {
         menuPanel.add(userManagementButton);
         menuPanel.add(Box.createVerticalStrut(5));
         menuPanel.add(permissionManagementButton);
-        menuPanel.add(Box.createVerticalStrut(5));
 
         menuPanel.add(Box.createVerticalGlue()); // 弹性空间
         menuPanel.add(logoutButton);

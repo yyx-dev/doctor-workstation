@@ -17,6 +17,7 @@ import java.awt.event.ActionEvent;
 import java.sql.SQLException;
 import java.sql.Timestamp;
 import java.math.BigDecimal;
+import java.time.format.DateTimeFormatter;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -27,6 +28,8 @@ public class DailySettlementPanel extends JPanel {
     private JLabel lblTodayRefund;
     private JTextField tfCashAmount;
     private JTextArea taRemark;
+
+    private DailySettlement currentSettlement;
 
     public DailySettlementPanel(Doctor doctor) {
         this.doctor = doctor;
@@ -99,11 +102,19 @@ public class DailySettlementPanel extends JPanel {
     private void loadLastSettlement() {
         try {
             DailySettlement last = new DailySettlementDao().getLastSettlement();
-            if (last != null) {
-                lblLastSettleTime.setText(last.getSettleDate().toString());
+            if (last != null && last.getSettleDate() != null) {
+                DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+                String formattedDate = last.getSettleDate().format(formatter);
+                lblLastSettleTime.setText(formattedDate);
+            } else {
+                lblLastSettleTime.setText("暂无历史日结记录");
             }
+        } catch (SQLException e) {
+            UIUtil.showError(this, "数据库错误：" + e.getMessage(), "加载失败");
+            e.printStackTrace();
         } catch (Exception e) {
-            UIUtil.showError(this, "加载历史数据失败", "系统错误");
+            UIUtil.showError(this, "系统错误：" + e.getMessage(), "加载失败");
+            e.printStackTrace();
         }
     }
 
@@ -117,7 +128,7 @@ public class DailySettlementPanel extends JPanel {
             // 创建日结记录
             DailySettlement ds = new DailySettlement();
             ds.setSettlementNo("DS" + System.currentTimeMillis());
-            ds.setSettleDate(new Timestamp(System.currentTimeMillis()));
+            ds.setSettleDate(new Timestamp(System.currentTimeMillis()).toLocalDateTime());
             ds.setTotalAmount(total);
             ds.setRefundAmount(refunds);
             ds.setCashAmount(new BigDecimal(tfCashAmount.getText()));
@@ -126,6 +137,8 @@ public class DailySettlementPanel extends JPanel {
             ds.setRemark(taRemark.getText());
 
             if (new DailySettlementDao().createSettlement(ds)) {
+                this.currentSettlement = ds;
+
                 JOptionPane.showMessageDialog(this, "日结操作成功完成");
                 loadLastSettlement();
             }
@@ -138,9 +151,16 @@ public class DailySettlementPanel extends JPanel {
 
     private void printReport(ActionEvent e) {
         try {
+            if (currentSettlement == null) {
+                UIUtil.showError(this, "请先完成日结操作", "无法打印");
+                return;
+            }
+
             JasperReport report = JasperCompileManager.compileReport("reports/daily.jrxml");
+
             Map<String, Object> params = new HashMap<>();
             params.put("settlementNo", currentSettlement.getSettlementNo());
+
             JasperPrint print = JasperFillManager.fillReport(report, params, DBUtil.getConnection());
             JasperViewer.viewReport(print, false);
         } catch (JRException ex) {

@@ -305,11 +305,11 @@ CREATE TABLE IF NOT EXISTS `user_permission` (
 -- 测试数据插入（按表结构顺序插入避免外键约束）
 -- 用户表测试数据
 INSERT INTO `user` (username, password, role) VALUES
-    ('doctor1', 'pass123', 'doctor'),
-    ('doctor2', 'pass456', 'doctor'),
-    ('patient1', 'pat123', 'patient'),
-    ('patient2', 'pat456', 'patient'),
-    ('patient3', 'pat789', 'patient');
+    ('doctor1', '1234', 'doctor'),
+    ('doctor2', '1234', 'doctor'),
+    ('patient1', '1234', 'patient'),
+    ('patient2', '1234', 'patient'),
+    ('patient3', '1234', 'patient');
 
 -- 医生表测试数据
 INSERT INTO `doctor` (user_id, name, gender, department, title, phone) VALUES

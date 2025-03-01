@@ -30,17 +30,11 @@ public class LoginFrame extends JFrame {
     private DoctorDao doctorDao = new DoctorDao();
     private PatientDao patientDao = new PatientDao();
 
-    /**
-     * 构造函数
-     */
     public LoginFrame() {
         // 设置窗口标题
         super("门诊医生工作站系统 - 登录");
 
-        // 初始化界面
         initUI();
-
-        // 添加事件监听器
         addListeners();
 
         // 设置窗口属性
@@ -51,9 +45,6 @@ public class LoginFrame extends JFrame {
         setVisible(true);
     }
 
-    /**
-     * 初始化界面
-     */
     private void initUI() {
         // 设置布局
         setLayout(new BorderLayout());
@@ -93,7 +84,7 @@ public class LoginFrame extends JFrame {
 
 
         usernameField.setText("doctor1");
-        passwordField.setText("password");
+        passwordField.setText("1234");
 
 
         gbc.gridx = 0;

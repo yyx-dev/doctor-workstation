@@ -3,13 +3,15 @@ package com.dw.model.fee;
 
 import java.math.BigDecimal;
 import java.sql.Timestamp;
+import java.time.LocalDateTime;
+
 import lombok.Data;
 
 @Data
 public class DailySettlement {
     private Integer id;
     private String settlementNo;
-    private Timestamp settleDate;
+    private LocalDateTime settleDate;
     private BigDecimal totalAmount;
     private BigDecimal cashAmount;
     private BigDecimal refundAmount;
